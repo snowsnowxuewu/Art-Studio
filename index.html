@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Studio Scheduler</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root{
+  --paper:#F5F2EC;
+  --surface:#FFFFFF;
+  --border:#E5DFD3;
+  --ink:#2B2A28;
+  --ink-soft:#746E63;
+  --plum:#4A3F6B;
+  --plum-dark:#372E50;
+  --plum-soft:#EDE9F4;
+  --green:#3F7D58;
+  --green-soft:#E6F0E9;
+  --rust:#C2542F;
+  --rust-soft:#FAEAE2;
+  --taupe:#9B9384;
+  --taupe-soft:#EFEBE3;
+  --shadow: 0 2px 10px rgba(43,42,40,0.06), 0 1px 2px rgba(43,42,40,0.05);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;line-height:1.45;}
+h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:600;margin:0;color:var(--plum-dark);}
+.app{max-width:100%;margin:0;padding:16px 56px 40px;}
+
+/* Header */
+.app-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.app-header h1{font-size:26px;letter-spacing:.2px;}
+.app-header .tagline{color:var(--ink-soft);font-size:12.5px;margin-top:2px;}
+
+/* Nav */
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:22px;flex-wrap:wrap;}
+.tab-btn{appearance:none;border:none;background:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--ink-soft);padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:.15s;}
+.tab-btn:hover{color:var(--plum);}
+.tab-btn.active{color:var(--plum-dark);border-bottom-color:var(--plum);}
+
+.view{display:none;}
+.view.active{display:block;}
+
+/* Buttons */
+button{font-family:'Inter',sans-serif;}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;transition:.15s;}
+.btn:hover{border-color:var(--plum);color:var(--plum-dark);}
+.btn-primary{background:var(--plum);color:#fff;border-color:var(--plum);}
+.btn-primary:hover{background:var(--plum-dark);border-color:var(--plum-dark);color:#fff;}
+.btn-danger{color:var(--rust);}
+.btn-danger:hover{border-color:var(--rust);color:var(--rust);}
+.btn-ghost{border-color:transparent;background:none;padding:6px 8px;}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px;}
+.icon-btn{border:none;background:none;cursor:pointer;color:var(--ink-soft);font-size:15px;padding:2px 6px;border-radius:5px;}
+.icon-btn:hover{background:var(--taupe-soft);color:var(--rust);}
+
+/* Calendar */
+.cal-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.cal-nav{display:flex;align-items:center;gap:10px;}
+.week-label{font-family:'Fraunces',serif;font-size:18px;color:var(--plum-dark);min-width:200px;text-align:center;}
+.week-grid{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;}
+.day-col{background:var(--surface);border:1px solid var(--border);border-radius:10px;min-width:0;flex:1 1 0;box-shadow:var(--shadow);display:flex;flex-direction:column;}
+.day-col.is-today{border-color:var(--plum);box-shadow:0 0 0 2px var(--plum-soft);}
+.day-head{padding:10px 12px 7px;border-bottom:1px solid var(--border);}
+.day-head .dname{font-family:'Fraunces',serif;font-size:15px;color:var(--plum-dark);}
+.day-head .ddate{font-size:11.5px;color:var(--ink-soft);}
+.day-body{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:60px;}
+.day-empty{color:var(--taupe);font-size:12px;padding:10px 6px;text-align:center;}
+
+.slot-group{border-radius:8px;padding:6px;}
+.slot-group.over{background:var(--rust-soft);}
+.slot-time{font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;justify-content:space-between;padding:2px 4px 4px;}
+.slot-warn{color:var(--rust);font-size:10.5px;font-weight:700;background:#fff;border-radius:10px;padding:1px 7px;border:1px solid var(--rust);}
+
+.session-card{background:var(--paper);border:1px solid var(--border);border-radius:7px;padding:6px 8px;margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.session-card .sname{font-weight:600;font-size:12.5px;cursor:pointer;}
+.session-card .sname:hover{color:var(--plum);text-decoration:underline;}
+.status-pill{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;}
+.status-scheduled{background:var(--plum-soft);color:var(--plum-dark);}
+.status-attended{background:var(--green-soft);color:var(--green);}
+.status-no-show{background:var(--rust-soft);color:var(--rust);}
+.status-skipped{background:var(--taupe-soft);color:var(--taupe);}
+
+select.status-select{font-size:11px;border:1px solid var(--border);border-radius:5px;padding:2px 3px;background:#fff;color:var(--ink);font-family:'Inter',sans-serif;}
+
+/* Students */
+.students-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.search-input{border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;min-width:220px;background:var(--surface);}
+.student-table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;}
+.student-table thead{background:var(--plum-soft);}
+.student-table th{text-align:left;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--plum-dark);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+.student-table tbody tr{border-top:1px solid var(--border);cursor:pointer;transition:.12s;}
+.student-table tbody tr:hover{background:var(--plum-soft);}
+.student-table td{padding:11px 14px;font-size:13.5px;vertical-align:middle;}
+.student-table .td-name{font-family:'Fraunces',serif;font-weight:600;font-size:14px;color:var(--plum-dark);}
+.student-table .td-contact{color:var(--ink-soft);font-size:12.5px;}
+.student-table .td-slots{color:var(--ink-soft);font-size:12.5px;}
+.student-table .td-num{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--plum-dark);text-align:center;}
+.student-table .td-remaining{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--green);text-align:center;}
+.student-table .td-remaining.low{color:var(--rust);}
+.student-table .td-actions{text-align:right;white-space:nowrap;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink-soft);}
+.empty-state h3{color:var(--ink-soft);margin-bottom:6px;}
+
+/* Forms / modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(43,42,40,.45);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;z-index:50;}
+.modal{background:var(--surface);border-radius:14px;max-width:560px;width:100%;padding:24px 26px;box-shadow:0 8px 30px rgba(0,0,0,.18);}
+.modal h2{font-size:19px;margin-bottom:4px;}
+.modal .modal-sub{color:var(--ink-soft);font-size:12.5px;margin-bottom:16px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:4px;}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13.5px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink);}
+.field-row{display:flex;gap:10px;}
+.field-row>.field{flex:1;}
+.enrollment-block{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--paper);position:relative;}
+.enrollment-block .remove-enr{position:absolute;top:8px;right:10px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+.hint{font-size:11.5px;color:var(--ink-soft);margin-top:-4px;margin-bottom:10px;}
+
+/* Detail panel */
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+.detail-actions{display:flex;gap:8px;}
+.enr-card{border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;background:var(--paper);}
+.enr-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;}
+.enr-top .when{font-family:'Fraunces',serif;font-size:15px;color:var(--plum-dark);}
+.enr-meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+.progress-wrap{margin-top:10px;}
+.progress-bar{height:7px;border-radius:5px;background:var(--taupe-soft);overflow:hidden;}
+.progress-fill{height:100%;background:var(--plum);}
+.progress-label{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+.session-table{width:100%;margin-top:10px;border-collapse:collapse;font-size:12.5px;}
+.session-table th{text-align:left;color:var(--ink-soft);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:4px 6px;border-bottom:1px solid var(--border);}
+.session-table td{padding:5px 6px;border-bottom:1px solid var(--border);}
+.notes-log{margin-top:6px;}
+.note-line{font-size:12px;padding:6px 10px;border-radius:7px;background:var(--rust-soft);color:var(--rust);margin-bottom:6px;}
+.note-line.neutral{background:var(--taupe-soft);color:var(--ink-soft);}
+
+/* Settings */
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;max-width:420px;box-shadow:var(--shadow);}
+.settings-card .field{margin-bottom:14px;}
+.save-msg{font-size:12px;color:var(--green);margin-top:8px;height:16px;}
+
+@media (max-width:640px){
+  .week-grid{flex-direction:column;}
+  .day-col{min-width:100%;}
+}
+/* Dashboard */
+.summary-section{margin-bottom:28px;}
+.summary-section h3{font-family:'Fraunces',serif;font-size:17px;color:var(--plum-dark);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:28px;}
+.dash-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px;}
+.dash-card .dc-label{font-size:11.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.4px;}
+.dash-card .dc-value{font-family:'Fraunces',serif;font-size:36px;font-weight:600;color:var(--plum-dark);line-height:1.1;}
+.dash-card .dc-sub{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+.top-students-table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;}
+.top-students-table thead{background:var(--plum-soft);}
+.top-students-table th{text-align:left;padding:9px 14px;font-size:11px;font-weight:700;color:var(--plum-dark);text-transform:uppercase;letter-spacing:.4px;}
+.top-students-table td{padding:10px 14px;font-size:13.5px;border-top:1px solid var(--border);}
+.top-students-table .rank{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:var(--plum-dark);width:36px;}
+.top-students-table .tn{font-weight:600;}
+.top-students-table .ts{color:var(--ink-soft);font-size:12px;}
+.rank-medal-1{color:#C9A84C;}
+.rank-medal-2{color:#8C9BAB;}
+.rank-medal-3{color:#A0785A;}
+.settings-row{display:flex;gap:16px;flex-wrap:wrap;}
+.settings-row .settings-card{flex:1;min-width:200px;}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <div>
+      <h1>Studio Scheduler</h1>
+      <div class="tagline">Student schedules, attendance &amp; payments — for the art studio</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="calendar">Calendar</button>
+    <button class="tab-btn" data-tab="students">Students</button>
+    <button class="tab-btn" data-tab="settings">Summary</button>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="view active" id="view-calendar">
+    <div class="cal-toolbar">
+      <div class="cal-nav">
+        <button class="btn btn-sm" id="prevWeek">‹ Prev</button>
+        <div class="week-label" id="weekLabel"></div>
+        <button class="btn btn-sm" id="nextWeek">Next ›</button>
+      </div>
+      <button class="btn btn-sm" id="todayBtn">This week</button>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div class="view" id="view-students">
+    <div class="students-toolbar">
+      <input class="search-input" id="studentSearch" placeholder="Search students…">
+      <button class="btn btn-primary" id="addStudentBtn">+ Add student</button>
+    </div>
+    <div id="studentTableWrap"></div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="view" id="view-settings">
+
+    <!-- Dashboard -->
+    <div class="summary-section">
+      <h3>Overview</h3>
+      <div class="dash-grid" id="dashGrid"></div>
+    </div>
+
+    <div class="summary-section">
+      <h3>Top 3 Students by Sessions</h3>
+      <table class="top-students-table">
+        <thead><tr><th>#</th><th>Student</th><th>Time Slots</th><th style="text-align:center;">Attended</th><th style="text-align:center;">Remaining</th></tr></thead>
+        <tbody id="topStudentsTbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Settings -->
+    <div class="summary-section">
+      <h3>Settings</h3>
+      <div class="settings-row">
+        <div class="settings-card">
+          <h2 style="margin-bottom:10px;font-size:15px;">Capacity</h2>
+          <div class="field">
+            <label>Maximum students per time slot</label>
+            <input type="number" id="maxCapacityInput" min="1" max="50">
+          </div>
+          <button class="btn btn-primary btn-sm" id="saveSettingsBtn">Save</button>
+          <div class="save-msg" id="settingsSaveMsg"></div>
+        </div>
+
+        <div class="settings-card">
+          <h2 style="margin-bottom:6px;font-size:15px;">Backup &amp; transfer</h2>
+          <div class="hint" style="margin-top:0;">Download everything in this tool as a file, or load a backup file into a fresh copy.</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+            <button class="btn btn-sm" id="exportBtn">Download backup</button>
+            <button class="btn btn-sm" id="importBtnTrigger">Restore from backup</button>
+            <input type="file" id="importFileInput" accept="application/json" style="display:none;">
+          </div>
+          <div class="save-msg" id="backupMsg"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+/* ============== STORAGE ============== */
+const STORAGE_KEY = 'app-data';
+let appData = { students: [], settings: { maxCapacity: 5 } };
+
+async function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      appData = JSON.parse(raw);
+      if(!appData.settings) appData.settings = { maxCapacity: 5 };
+      if(!appData.students) appData.students = [];
+    }
+  }catch(e){ console.error('Load failed', e); }
+}
+async function saveData(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+  }catch(e){ console.error('Save failed', e); }
+}
+
+/* ============== UTIL ============== */
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function genId(){ return 'id_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmtDate(d){ // Date -> YYYY-MM-DD
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function parseDate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function fmtDisplayDate(s){ const d=parseDate(s); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+function fmtTime12(t){ // "14:30" -> "2:30 PM"
+  let [h,m]=t.split(':').map(Number);
+  const ap = h>=12?'PM':'AM';
+  h = h%12; if(h===0) h=12;
+  return `${h}:${String(m).padStart(2,'0')} ${ap}`;
+}
+function getWeekStart(d){ const r=new Date(d); r.setDate(r.getDate()-r.getDay()); r.setHours(0,0,0,0); return r; }
+
+/* ============== SESSION GENERATION / LOGIC ============== */
+function snapToWeekday(dateStr, dayIdx){
+  let d = parseDate(dateStr);
+  while(d.getDay() !== dayIdx){ d = addDays(d,1); }
+  return fmtDate(d);
+}
+function generateSessions(startDateStr, dayIdx, totalLessons){
+  const start = snapToWeekday(startDateStr, dayIdx);
+  let cur = parseDate(start);
+  const sessions = [];
+  for(let i=0;i<totalLessons;i++){
+    sessions.push({ id: genId(), date: fmtDate(cur), status: 'scheduled' });
+    cur = addDays(cur,7);
+  }
+  return sessions;
+}
+function maxSessionDate(sessions){
+  return sessions.reduce((max,s)=> s.date > max ? s.date : max, sessions[0].date);
+}
+function addNote(student, text, neutral){
+  if(!student.notes) student.notes=[];
+  student.notes.unshift({ id: genId(), text, date: fmtDate(new Date()), neutral: !!neutral });
+}
+function setSessionStatus(student, enrollment, session, newStatus){
+  const old = session.status;
+  if(old === newStatus) return;
+  if(newStatus === 'skipped' && old !== 'skipped'){
+    const lastDate = maxSessionDate(enrollment.sessions);
+    const newDate = fmtDate(addDays(parseDate(lastDate),7));
+    enrollment.sessions.push({ id: genId(), date: newDate, status:'scheduled' });
+    addNote(student, `Skipped lesson on ${fmtDisplayDate(session.date)} (${DAY_NAMES[enrollment.day]} ${fmtTime12(enrollment.startTime)}) — rescheduled to ${fmtDisplayDate(newDate)}.`, true);
+  }
+  if(newStatus === 'no-show' && old !== 'no-show'){
+    addNote(student, `No-show on ${fmtDisplayDate(session.date)} (${DAY_NAMES[enrollment.day]} ${fmtTime12(enrollment.startTime)}) — 1 lesson deducted as penalty.`, false);
+  }
+  session.status = newStatus;
+}
+function enrollmentStats(enrollment){
+  const used = enrollment.sessions.filter(s=>s.status==='attended'||s.status==='no-show').length;
+  const remaining = Math.max(enrollment.totalLessons - used, 0);
+  return { used, remaining, total: enrollment.totalLessons };
+}
+
+/* ============== STATE ============== */
+let currentWeekStart = getWeekStart(new Date());
+let activeStudentId = null;
+
+/* ============== RENDER: CALENDAR ============== */
+function renderCalendar(){
+  const weekDates = [...Array(7)].map((_,i)=> fmtDate(addDays(currentWeekStart,i)));
+  const todayStr = fmtDate(new Date());
+  const wEnd = addDays(currentWeekStart,6);
+  document.getElementById('weekLabel').textContent =
+    `${currentWeekStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${wEnd.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+
+  const grid = document.getElementById('weekGrid');
+  grid.innerHTML = '';
+
+  weekDates.forEach((dateStr, idx)=>{
+    // gather sessions for this date across all students
+    const items = [];
+    appData.students.forEach(student=>{
+      (student.enrollments||[]).forEach(enr=>{
+        enr.sessions.forEach(sess=>{
+          if(sess.date === dateStr){
+            items.push({ student, enr, sess });
+          }
+        });
+      });
+    });
+    items.sort((a,b)=> a.enr.startTime.localeCompare(b.enr.startTime) || a.student.name.localeCompare(b.student.name));
+
+    // group by time slot (excluding skipped for capacity, but show skipped greyed too)
+    const groups = {};
+    items.forEach(it=>{
+      const key = it.enr.startTime+'-'+it.enr.endTime;
+      if(!groups[key]) groups[key] = [];
+      groups[key].push(it);
+    });
+
+    const col = document.createElement('div');
+    col.className = 'day-col' + (dateStr===todayStr ? ' is-today' : '');
+    const d = parseDate(dateStr);
+    col.innerHTML = `
+      <div class="day-head">
+        <div class="dname">${DAY_NAMES[idx]}</div>
+        <div class="ddate">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+      </div>
+      <div class="day-body"></div>
+    `;
+    const body = col.querySelector('.day-body');
+
+    const sortedKeys = Object.keys(groups).sort();
+    if(sortedKeys.length===0){
+      body.innerHTML = `<div class="day-empty">No lessons</div>`;
+    } else {
+      sortedKeys.forEach(key=>{
+        const groupItems = groups[key];
+        const activeCount = groupItems.filter(it=>it.sess.status!=='skipped').length;
+        const over = activeCount > appData.settings.maxCapacity;
+        const [st,et] = key.split('-');
+        const groupEl = document.createElement('div');
+        groupEl.className = 'slot-group' + (over?' over':'');
+        groupEl.innerHTML = `<div class="slot-time"><span>${fmtTime12(st)}–${fmtTime12(et)}</span>${over?`<span class="slot-warn">⚠ ${activeCount}/${appData.settings.maxCapacity}</span>`:''}</div>`;
+        groupItems.forEach(it=>{
+          const card = document.createElement('div');
+          card.className = 'session-card';
+          card.innerHTML = `
+            <span class="sname" data-student-id="${it.student.id}">${escapeHtml(it.student.name)}</span>
+            <select class="status-select" data-student-id="${it.student.id}" data-enr-id="${it.enr.id}" data-sess-id="${it.sess.id}">
+              <option value="scheduled" ${it.sess.status==='scheduled'?'selected':''}>Scheduled</option>
+              <option value="attended" ${it.sess.status==='attended'?'selected':''}>Attended</option>
+              <option value="no-show" ${it.sess.status==='no-show'?'selected':''}>No Show</option>
+              <option value="skipped" ${it.sess.status==='skipped'?'selected':''}>Skip</option>
+            </select>
+          `;
+          groupEl.appendChild(card);
+        });
+        body.appendChild(groupEl);
+      });
+    }
+    grid.appendChild(col);
+  });
+
+  // wire events
+  grid.querySelectorAll('.status-select').forEach(sel=>{
+    sel.addEventListener('change', async (e)=>{
+      const { studentId, enrId, sessId } = e.target.dataset;
+      const student = appData.students.find(s=>s.id===studentId);
+      const enr = student.enrollments.find(en=>en.id===enrId);
+      const sess = enr.sessions.find(ss=>ss.id===sessId);
+      setSessionStatus(student, enr, sess, e.target.value);
+      await saveData();
+      renderCalendar();
+    });
+  });
+  grid.querySelectorAll('.sname').forEach(el=>{
+    el.addEventListener('click', ()=>{ openStudentDetail(el.dataset.studentId); });
+  });
+}
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============== RENDER: STUDENTS LIST ============== */
+function renderStudents(){
+  const wrap = document.getElementById('studentTableWrap');
+  const q = (document.getElementById('studentSearch').value||'').toLowerCase();
+  const list = appData.students.filter(s=>s.name.toLowerCase().includes(q));
+  wrap.innerHTML='';
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><h3>No students yet</h3><div>Add your first student to start scheduling lessons.</div></div>`;
+    return;
+  }
+  const table = document.createElement('table');
+  table.className = 'student-table';
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Contact</th>
+        <th>Time slots</th>
+        <th style="text-align:center;">Taken</th>
+        <th style="text-align:center;">Remaining</th>
+        <th style="text-align:center;">Slots</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="studentTbody"></tbody>
+  `;
+  wrap.appendChild(table);
+  const tbody = document.getElementById('studentTbody');
+  list.forEach(student=>{
+    const enrCount = (student.enrollments||[]).length;
+    const totalRemaining = (student.enrollments||[]).reduce((sum,e)=>sum+enrollmentStats(e).remaining,0);
+    const totalTaken = (student.enrollments||[]).reduce((sum,e)=>sum+enrollmentStats(e).used,0);
+    const slotsText = (student.enrollments||[]).map(e=>`${DAY_NAMES[e.day].slice(0,3)} ${fmtTime12(e.startTime)}-${fmtTime12(e.endTime)}`).join('<br>') || '<span style="color:var(--taupe);">None set</span>';
+    const remainingClass = totalRemaining <= 3 ? 'td-remaining low' : 'td-remaining';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-name">${escapeHtml(student.name)}</td>
+      <td class="td-contact">${escapeHtml(student.contact||'—')}</td>
+      <td class="td-slots">${slotsText}</td>
+      <td class="td-num">${totalTaken}</td>
+      <td class="${remainingClass}">${totalRemaining}</td>
+      <td class="td-num">${enrCount}</td>
+      <td class="td-actions">
+        <button class="btn btn-sm edit-btn" data-id="${student.id}">Edit</button>
+        <button class="btn btn-sm" data-view-id="${student.id}" style="margin-left:4px;">View</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  // wire row click (not on buttons)
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    tr.addEventListener('click',(e)=>{
+      if(e.target.closest('button')) return;
+      const id = tr.querySelector('[data-view-id]')?.dataset?.viewId;
+      if(id) openStudentDetail(id);
+    });
+  });
+  tbody.querySelectorAll('[data-view-id]').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{ e.stopPropagation(); openStudentDetail(btn.dataset.viewId); });
+  });
+  tbody.querySelectorAll('.edit-btn').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{ e.stopPropagation(); openStudentForm(btn.dataset.id); });
+  });
+}
+
+/* ============== MODALS ============== */
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+
+function openStudentDetail(studentId){
+  const student = appData.students.find(s=>s.id===studentId);
+  if(!student) return;
+  const root = document.getElementById('modalRoot');
+
+  const enrHtml = (student.enrollments||[]).map(enr=>{
+    const stats = enrollmentStats(enr);
+    const pct = stats.total>0 ? Math.round((stats.used/stats.total)*100) : 0;
+    const rows = [...enr.sessions].sort((a,b)=>a.date.localeCompare(b.date)).map(s=>`
+      <tr>
+        <td>${fmtDisplayDate(s.date)}</td>
+        <td><span class="status-pill status-${s.status}">${s.status.replace('-',' ')}</span></td>
+        <td><button class="icon-btn" data-del-sess="${enr.id}|${s.id}" title="Remove session">✕</button></td>
+      </tr>
+    `).join('');
+    return `
+      <div class="enr-card">
+        <div class="enr-top">
+          <div>
+            <div class="when">${DAY_NAMES[enr.day]} · ${fmtTime12(enr.startTime)}–${fmtTime12(enr.endTime)}</div>
+            <div class="enr-meta">Started ${fmtDisplayDate(enr.sessions[0]?.date || enr.startDate)} · ${stats.total} lessons paid · $${Number(enr.amountPaid).toFixed(2)}</div>
+          </div>
+          <button class="icon-btn" data-del-enr="${enr.id}" title="Delete this schedule">✕</button>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div class="progress-label">${stats.used} of ${stats.total} taken · ${stats.remaining} remaining</div>
+        </div>
+        <table class="session-table">
+          <thead><tr><th>Date</th><th>Status</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }).join('') || `<div class="hint">No schedules yet. Use "Add time slot" below.</div>`;
+
+  const notesHtml = (student.notes||[]).map(n=>`<div class="note-line ${n.neutral?'neutral':''}">${fmtDisplayDate(n.date)} — ${escapeHtml(n.text)}</div>`).join('') || `<div class="hint">No notes yet.</div>`;
+
+  root.innerHTML = `
+    <div class="modal-overlay" id="overlay">
+      <div class="modal" style="max-width:640px;">
+        <div class="detail-header">
+          <div>
+            <h2>${escapeHtml(student.name)}</h2>
+            <div class="modal-sub">${escapeHtml(student.contact||'No contact info')}</div>
+          </div>
+          <div class="detail-actions">
+            <button class="btn btn-sm" id="editStudentBtn">Edit</button>
+            <button class="btn btn-sm btn-danger" id="deleteStudentBtn">Delete</button>
+            <button class="btn btn-sm btn-ghost" id="closeModalBtn">✕</button>
+          </div>
+        </div>
+        <h4 style="margin-bottom:8px;">Schedules</h4>
+        ${enrHtml}
+        <button class="btn btn-sm" id="addSlotBtn" style="margin-bottom:18px;">+ Add time slot</button>
+        <h4 style="margin-bottom:8px;">Notes</h4>
+        <div class="notes-log">${notesHtml}</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('closeModalBtn').onclick = closeModal;
+  document.getElementById('overlay').addEventListener('click',(e)=>{ if(e.target.id==='overlay') closeModal(); });
+  document.getElementById('editStudentBtn').onclick = ()=> openStudentForm(student.id);
+  document.getElementById('addSlotBtn').onclick = ()=> openStudentForm(student.id, true);
+  document.getElementById('deleteStudentBtn').onclick = async ()=>{
+    if(confirm(`Delete ${student.name}? This removes all their schedules and history.`)){
+      appData.students = appData.students.filter(s=>s.id!==student.id);
+      await saveData();
+      closeModal();
+      renderStudents();
+    }
+  };
+  root.querySelectorAll('[data-del-enr]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(confirm('Delete this schedule and its entire lesson history?')){
+        student.enrollments = student.enrollments.filter(e=>e.id!==btn.dataset.delEnr);
+        await saveData();
+        openStudentDetail(studentId);
+        renderStudents();
+      }
+    };
+  });
+  root.querySelectorAll('[data-del-sess]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const [enrId, sessId] = btn.dataset.delSess.split('|');
+      const enr = student.enrollments.find(e=>e.id===enrId);
+      if(enr.sessions.length<=1){ alert("Can't remove the only session — delete the whole schedule instead."); return; }
+      enr.sessions = enr.sessions.filter(s=>s.id!==sessId);
+      await saveData();
+      openStudentDetail(studentId);
+    };
+  });
+}
+
+function openStudentForm(studentId, jumpToAddSlot){
+  const editing = !!studentId;
+  const student = editing ? appData.students.find(s=>s.id===studentId) : null;
+  const root = document.getElementById('modalRoot');
+
+  // Each slot is { existing: enr|null }
+  let slots = editing
+    ? (student.enrollments||[]).map(enr=>({ existing: enr }))
+    : [{ existing: null }];
+
+  root.innerHTML = `
+    <div class="modal-overlay" id="overlay">
+      <div class="modal">
+        <h2>${editing? 'Edit student' : 'Add student'}</h2>
+        <div class="modal-sub">${editing? "Edit name, contact, or any time slot. If you change a slot's day/time/start date its future sessions will be regenerated." : 'Set up the student and their first lesson schedule.'}</div>
+        <div class="field">
+          <label>Student name</label>
+          <input id="f-name" value="${editing? escapeHtml(student.name):''}" placeholder="e.g. Mia Chen">
+        </div>
+        <div class="field">
+          <label>Contact (phone/email - optional)</label>
+          <input id="f-contact" value="${editing? escapeHtml(student.contact||''):''}" placeholder="e.g. parent@email.com">
+        </div>
+        <h4 style="margin:16px 0 8px;">Time slots</h4>
+        <div id="enrollmentContainer"></div>
+        <button class="btn btn-sm" id="addAnotherSlot" style="margin-bottom:6px;">+ Add another time slot</button>
+        <div class="modal-actions">
+          <button class="btn" id="cancelBtn">Cancel</button>
+          <button class="btn btn-primary" id="saveStudentBtn">${editing? 'Save changes':'Add student'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const container = document.getElementById('enrollmentContainer');
+
+  function slotBlockHtml(i, slot){
+    const enr = slot.existing;
+    const dayVal  = enr ? enr.day       : 0;
+    const stDate  = enr ? (enr.sessions[0]?.date || enr.startDate || fmtDate(new Date())) : fmtDate(new Date());
+    const stTime  = enr ? enr.startTime : '10:00';
+    const etTime  = enr ? enr.endTime   : '12:00';
+    const total   = enr ? enr.totalLessons : 20;
+    const amount  = enr ? enr.amountPaid   : 0;
+    const canDel  = slots.length > 1 || (editing && slots.length > 0);
+    return `
+      <div class="enrollment-block" data-idx="${i}">
+        ${canDel ? `<button class="icon-btn remove-enr" data-remove="${i}" title="Remove">x</button>` : ''}
+        <div class="field-row">
+          <div class="field">
+            <label>Day of week</label>
+            <select class="e-day">
+              ${DAY_NAMES.map((d,idx)=>`<option value="${idx}" ${idx===dayVal?'selected':''}>${d}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label>Start date</label>
+            <input type="date" class="e-startdate" value="${stDate}">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Start time</label>
+            <input type="time" class="e-starttime" value="${stTime}">
+          </div>
+          <div class="field">
+            <label>End time</label>
+            <input type="time" class="e-endtime" value="${etTime}">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Total lessons paid for</label>
+            <input type="number" min="1" class="e-total" value="${total}">
+          </div>
+          <div class="field">
+            <label>Amount paid ($)</label>
+            <input type="number" min="0" step="0.01" class="e-amount" value="${amount}">
+          </div>
+        </div>
+        ${enr ? '<div class="hint" style="margin-top:2px;">Existing slot - future sessions regenerate if day, time, or start date changes.</div>' : '<div class="hint" style="margin-top:2px;color:var(--plum);">New slot</div>'}
+      </div>
+    `;
+  }
+
+  function refreshBlocks(){
+    container.innerHTML = slots.map((slot,i)=> slotBlockHtml(i, slot)).join('');
+    container.querySelectorAll('[data-remove]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const idx = Number(btn.dataset.remove);
+        const slot = slots[idx];
+        if(slot.existing){
+          if(confirm('Delete this time slot and all its lesson history?')){
+            slots.splice(idx,1);
+            if(slots.length===0) slots.push({ existing: null });
+            refreshBlocks();
+          }
+        } else {
+          slots.splice(idx,1);
+          if(slots.length===0) slots.push({ existing: null });
+          refreshBlocks();
+        }
+      };
+    });
+  }
+  refreshBlocks();
+
+  document.getElementById('addAnotherSlot').onclick = ()=>{
+    slots.push({ existing: null });
+    refreshBlocks();
+  };
+  document.getElementById('cancelBtn').onclick = closeModal;
+  document.getElementById('overlay').addEventListener('click',(e)=>{ if(e.target.id==='overlay') closeModal(); });
+
+  document.getElementById('saveStudentBtn').onclick = async ()=>{
+    const name = document.getElementById('f-name').value.trim();
+    if(!name){ alert('Please enter a student name.'); return; }
+    const contact = document.getElementById('f-contact').value.trim();
+
+    const blocks = [...container.querySelectorAll('.enrollment-block')];
+    const finalEnrollments = blocks.map((block, i)=>{
+      const slot = slots[i];
+      const day       = Number(block.querySelector('.e-day').value);
+      const startDate = block.querySelector('.e-startdate').value;
+      const startTime = block.querySelector('.e-starttime').value;
+      const endTime   = block.querySelector('.e-endtime').value;
+      const total     = Math.max(1, Number(block.querySelector('.e-total').value)||1);
+      const amount    = Number(block.querySelector('.e-amount').value)||0;
+      const enr = slot.existing;
+
+      if(enr){
+        const scheduleChanged = (enr.day !== day || enr.startTime !== startTime ||
+          enr.endTime !== endTime || (enr.sessions[0]?.date || enr.startDate) !== startDate);
+        enr.day = day; enr.startTime = startTime; enr.endTime = endTime;
+        enr.totalLessons = total; enr.amountPaid = amount;
+        if(scheduleChanged){
+          const kept = enr.sessions.filter(s=>s.status==='attended'||s.status==='no-show');
+          const needed = Math.max(0, total - kept.length);
+          let newStart = startDate;
+          if(kept.length>0){
+            const lastKept = kept.reduce((m,s)=>s.date>m?s.date:m, kept[0].date);
+            const afterLast = fmtDate(addDays(parseDate(lastKept),7));
+            newStart = afterLast > startDate ? afterLast : startDate;
+          }
+          const fresh = needed > 0 ? generateSessions(newStart, day, needed) : [];
+          enr.sessions = [...kept, ...fresh].sort((a,b)=>a.date.localeCompare(b.date));
+          if(!student.notes) student.notes=[];
+          addNote(student, `Schedule updated: ${DAY_NAMES[day]} ${fmtTime12(startTime)}-${fmtTime12(endTime)}, starting ${fmtDisplayDate(startDate)}.`, true);
+        }
+        return enr;
+      } else {
+        return {
+          id: genId(), day, startTime, endTime, startDate, totalLessons: total, amountPaid: amount,
+          sessions: generateSessions(startDate, day, total)
+        };
+      }
+    });
+
+    if(editing){
+      student.name = name;
+      student.contact = contact;
+      student.enrollments = finalEnrollments;
+      await saveData();
+      closeModal();
+      renderStudents();
+      renderCalendar();
+    } else {
+      appData.students.push({ id: genId(), name, contact, notes:[], enrollments: finalEnrollments });
+      await saveData();
+      closeModal();
+      renderStudents();
+      renderCalendar();
+    }
+  };
+}
+
+
+/* ============== SUMMARY / SETTINGS ============== */
+function renderSettings(){
+  document.getElementById('maxCapacityInput').value = appData.settings.maxCapacity;
+  renderDashboard();
+}
+function renderDashboard(){
+  const now = new Date();
+  const todayStr = fmtDate(now);
+  const mtdPrefix = todayStr.slice(0,7); // "YYYY-MM"
+  const ytdPrefix = todayStr.slice(0,4); // "YYYY"
+
+  let totalStudents = appData.students.length;
+  let mtdSessions = 0, ytdSessions = 0;
+
+  // per-student attended counts for top-3
+  const studentTotals = appData.students.map(student=>{
+    let attended = 0;
+    (student.enrollments||[]).forEach(enr=>{
+      enr.sessions.forEach(s=>{
+        if(s.status==='attended'){
+          attended++;
+          if(s.date.startsWith(ytdPrefix)) ytdSessions++;
+          if(s.date.startsWith(mtdPrefix)) mtdSessions++;
+        }
+      });
+    });
+    return { student, attended };
+  });
+
+  // dash cards
+  const dashGrid = document.getElementById('dashGrid');
+  dashGrid.innerHTML = `
+    <div class="dash-card">
+      <div class="dc-label">Total Students</div>
+      <div class="dc-value">${totalStudents}</div>
+      <div class="dc-sub">enrolled</div>
+    </div>
+    <div class="dash-card">
+      <div class="dc-label">Month to Date Sessions</div>
+      <div class="dc-value">${mtdSessions}</div>
+      <div class="dc-sub">${now.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
+    </div>
+    <div class="dash-card">
+      <div class="dc-label">Year to Date Sessions</div>
+      <div class="dc-value">${ytdSessions}</div>
+      <div class="dc-sub">Jan 1 – today, ${ytdPrefix}</div>
+    </div>
+  `;
+
+  // top 3
+  const top3 = [...studentTotals].sort((a,b)=>b.attended-a.attended).slice(0,3);
+  const medals = ['🥇','🥈','🥉'];
+  const tbody = document.getElementById('topStudentsTbody');
+  if(top3.length===0){
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);padding:20px;">No attended sessions yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = top3.map((item,i)=>{
+    const enrCount = (item.student.enrollments||[]).length;
+    const slotsText = (item.student.enrollments||[]).map(e=>`${DAY_NAMES[e.day].slice(0,3)} ${fmtTime12(e.startTime)}–${fmtTime12(e.endTime)}`).join(' · ') || '—';
+    const totalRemaining = (item.student.enrollments||[]).reduce((sum,e)=>sum+enrollmentStats(e).remaining,0);
+    return `<tr>
+      <td class="rank">${medals[i]}</td>
+      <td class="tn">${escapeHtml(item.student.name)}</td>
+      <td class="ts">${slotsText}</td>
+      <td style="text-align:center;font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--plum-dark);">${item.attended}</td>
+      <td style="text-align:center;font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--ink-soft);">${totalRemaining}</td>
+    </tr>`;
+  }).join('');
+}
+document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
+  const v = Math.max(1, Number(document.getElementById('maxCapacityInput').value)||5);
+  appData.settings.maxCapacity = v;
+  await saveData();
+  const msg = document.getElementById('settingsSaveMsg');
+  msg.textContent = 'Saved.';
+  renderCalendar();
+  setTimeout(()=>{ msg.textContent=''; }, 2000);
+});
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `studio-scheduler-backup-${fmtDate(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+document.getElementById('importBtnTrigger').addEventListener('click', ()=>{
+  document.getElementById('importFileInput').click();
+});
+document.getElementById('importFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    const backupMsg = document.getElementById('backupMsg');
+    try{
+      const parsed = JSON.parse(ev.target.result);
+      if(!parsed || !Array.isArray(parsed.students) || !parsed.settings) throw new Error('bad shape');
+      if(confirm('This will replace everything currently in this tool with the backup file. Continue?')){
+        appData = parsed;
+        await saveData();
+        renderCalendar(); renderStudents(); renderSettings();
+        backupMsg.textContent = 'Backup restored.';
+        setTimeout(()=>{ backupMsg.textContent=''; }, 2500);
+      }
+    }catch(err){
+      alert("This file doesn't look like a valid Studio Scheduler backup.");
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ============== NAV ============== */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='students') renderStudents();
+    if(btn.dataset.tab==='calendar') renderCalendar();
+    if(btn.dataset.tab==='settings') renderSettings();
+  });
+});
+document.getElementById('addStudentBtn').addEventListener('click', ()=> openStudentForm(null));
+document.getElementById('studentSearch').addEventListener('input', renderStudents);
+document.getElementById('prevWeek').addEventListener('click', ()=>{ currentWeekStart = addDays(currentWeekStart,-7); renderCalendar(); });
+document.getElementById('nextWeek').addEventListener('click', ()=>{ currentWeekStart = addDays(currentWeekStart,7); renderCalendar(); });
+document.getElementById('todayBtn').addEventListener('click', ()=>{ currentWeekStart = getWeekStart(new Date()); renderCalendar(); });
+
+/* ============== INIT ============== */
+(async function init(){
+  await loadData();
+  renderCalendar();
+  renderStudents();
+  renderSettings();
+})();
+</script>
+</body>
+</html>

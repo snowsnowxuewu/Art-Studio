@@ -3,7 +3,7 @@ Art Studio Sheduler
 
 **A lightweight web app for art studios to manage student schedules, attendance, and payments.**
 
-🔗 **Live Demo:** [snowsnowxuewu.github.io/art-studio](https://snowsnowxuewu.github.io/art-studio/)
+🔗 **Live Demo:** [snowsnowxuewu.github.io/art-studio](https://snowsnowxuewu.github.io/Art-Studio/)
 
 ---
 

@@ -24,6 +24,9 @@
   --shadow: 0 2px 10px rgba(43,42,40,0.06), 0 1px 2px rgba(43,42,40,0.05);
 }
 *{box-sizing:border-box;}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+input[type=number]{-moz-appearance:textfield;}
 html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;line-height:1.45;}
 h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:600;margin:0;color:var(--plum-dark);}
 .app{max-width:100%;margin:0;padding:16px 56px 40px;}
@@ -76,6 +79,8 @@ button{font-family:'Inter',sans-serif;}
 .session-card{background:var(--paper);border:1px solid var(--border);border-radius:7px;padding:6px 8px;margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:6px;}
 .session-card .sname{font-weight:600;font-size:12.5px;cursor:pointer;}
 .session-card .sname:hover{color:var(--plum);text-decoration:underline;}
+.adhoc-badge{font-size:9px;font-weight:700;background:var(--green-soft);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 5px;margin-left:3px;text-transform:uppercase;letter-spacing:.3px;}
+.session-card.adhoc{border-color:var(--green);background:#f0f7f3;}
 .status-pill{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;}
 .status-scheduled{background:var(--plum-soft);color:var(--plum-dark);}
 .status-attended{background:var(--green-soft);color:var(--green);}
@@ -363,12 +368,12 @@ function renderCalendar(){
         });
       });
     });
-    items.sort((a,b)=> a.enr.startTime.localeCompare(b.enr.startTime) || a.student.name.localeCompare(b.student.name));
+    items.sort((a,b)=> (a.sess.adhoc?a.sess.startTime:a.enr.startTime).localeCompare(b.sess.adhoc?b.sess.startTime:b.enr.startTime) || a.student.name.localeCompare(b.student.name));
 
     // group by time slot (excluding skipped for capacity, but show skipped greyed too)
     const groups = {};
     items.forEach(it=>{
-      const key = it.enr.startTime+'-'+it.enr.endTime;
+      const key = (it.sess.adhoc ? it.sess.startTime : it.enr.startTime)+'-'+(it.sess.adhoc ? it.sess.endTime : it.enr.endTime);
       if(!groups[key]) groups[key] = [];
       groups[key].push(it);
     });
@@ -399,9 +404,9 @@ function renderCalendar(){
         groupEl.innerHTML = `<div class="slot-time"><span>${fmtTime12(st)}–${fmtTime12(et)}</span>${over?`<span class="slot-warn">⚠ ${activeCount}/${appData.settings.maxCapacity}</span>`:''}</div>`;
         groupItems.forEach(it=>{
           const card = document.createElement('div');
-          card.className = 'session-card';
+          card.className = 'session-card' + (it.sess.adhoc ? ' adhoc' : '');
           card.innerHTML = `
-            <span class="sname" data-student-id="${it.student.id}">${escapeHtml(it.student.name)}</span>
+            <span class="sname" data-student-id="${it.student.id}">${escapeHtml(it.student.name)}${it.sess.adhoc ? '<span class="adhoc-badge">Ad hoc</span>' : ''}</span>
             <select class="status-select" data-student-id="${it.student.id}" data-enr-id="${it.enr.id}" data-sess-id="${it.sess.id}">
               <option value="scheduled" ${it.sess.status==='scheduled'?'selected':''}>Scheduled</option>
               <option value="attended" ${it.sess.status==='attended'?'selected':''}>Attended</option>
@@ -516,7 +521,7 @@ function openStudentDetail(studentId){
     const rows = [...enr.sessions].sort((a,b)=>a.date.localeCompare(b.date)).map(s=>`
       <tr>
         <td>${fmtDisplayDate(s.date)}</td>
-        <td><span class="status-pill status-${s.status}">${s.status.replace('-',' ')}</span></td>
+        <td><span class="status-pill status-${s.status}">${s.status.replace('-',' ')}</span>${s.adhoc ? ' <span class="adhoc-badge">Ad hoc</span>' : ''}</td>
         <td><button class="icon-btn" data-del-sess="${enr.id}|${s.id}" title="Remove session">✕</button></td>
       </tr>
     `).join('');
@@ -559,7 +564,8 @@ function openStudentDetail(studentId){
         </div>
         <h4 style="margin-bottom:8px;">Schedules</h4>
         ${enrHtml}
-        <button class="btn btn-sm" id="addSlotBtn" style="margin-bottom:18px;">+ Add time slot</button>
+        <button class="btn btn-sm" id="addSlotBtn" style="margin-bottom:6px;">+ Add time slot</button>
+        <button class="btn btn-sm" id="addAdhocBtn" style="margin-bottom:18px;margin-left:8px;border-color:var(--green);color:var(--green);">+ Add ad hoc class</button>
         <h4 style="margin-bottom:8px;">Notes</h4>
         <div class="notes-log">${notesHtml}</div>
       </div>
@@ -570,6 +576,7 @@ function openStudentDetail(studentId){
   document.getElementById('overlay').addEventListener('click',(e)=>{ if(e.target.id==='overlay') closeModal(); });
   document.getElementById('editStudentBtn').onclick = ()=> openStudentForm(student.id);
   document.getElementById('addSlotBtn').onclick = ()=> openStudentForm(student.id, true);
+  document.getElementById('addAdhocBtn').onclick = ()=> openAdhocForm(student.id);
   document.getElementById('deleteStudentBtn').onclick = async ()=>{
     if(confirm(`Delete ${student.name}? This removes all their schedules and history.`)){
       appData.students = appData.students.filter(s=>s.id!==student.id);
@@ -673,11 +680,11 @@ function openStudentForm(studentId, jumpToAddSlot){
         <div class="field-row">
           <div class="field">
             <label>Total lessons paid for</label>
-            <input type="number" min="1" class="e-total" value="${total}">
+            <input type="text" inputmode="numeric" class="e-total" value="${total}">
           </div>
           <div class="field">
             <label>Amount paid ($)</label>
-            <input type="number" min="0" step="0.01" class="e-amount" value="${amount}">
+            <input type="text" inputmode="decimal" class="e-amount" value="${amount}">
           </div>
         </div>
         ${enr ? '<div class="hint" style="margin-top:2px;">Existing slot - future sessions regenerate if day, time, or start date changes.</div>' : '<div class="hint" style="margin-top:2px;color:var(--plum);">New slot</div>'}
@@ -776,6 +783,85 @@ function openStudentForm(studentId, jumpToAddSlot){
   };
 }
 
+
+
+/* ============== AD HOC CLASS FORM ============== */
+function openAdhocForm(studentId){
+  const student = appData.students.find(s=>s.id===studentId);
+  if(!student) return;
+  const enrollments = student.enrollments||[];
+  if(enrollments.length===0){
+    alert('This student has no lesson package yet. Please add a time slot first.');
+    return;
+  }
+  const root = document.getElementById('modalRoot');
+
+  const pkgOptions = enrollments.map(enr=>{
+    const stats = enrollmentStats(enr);
+    return '<option value="'+enr.id+'">'+DAY_NAMES[enr.day]+' '+fmtTime12(enr.startTime)+'–'+fmtTime12(enr.endTime)+' ('+stats.remaining+' remaining)</option>';
+  }).join('');
+
+  const pkgSelector = enrollments.length > 1
+    ? '<div class="field"><label>Deduct from package</label><select id="adhoc-enr">'+pkgOptions+'</select></div>'
+    : '<input type="hidden" id="adhoc-enr" value="'+enrollments[0].id+'">';
+
+  root.innerHTML = '<div class="modal-overlay" id="overlay"><div class="modal" style="max-width:420px;">'
+    + '<h2>Add ad hoc class</h2>'
+    + '<div class="modal-sub">Schedule a one-off extra class outside the regular timetable. 1 lesson will be deducted from the package.</div>'
+    + pkgSelector
+    + '<div class="field-row">'
+    + '<div class="field"><label>Date</label><input type="date" id="adhoc-date" value="'+fmtDate(new Date())+'"></div>'
+    + '</div>'
+    + '<div class="field-row">'
+    + '<div class="field"><label>Start time</label><input type="time" id="adhoc-start" value="10:00"></div>'
+    + '<div class="field"><label>End time</label><input type="time" id="adhoc-end" value="12:00"></div>'
+    + '</div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn" id="cancelAdhocBtn">Cancel</button>'
+    + '<button class="btn btn-primary" id="saveAdhocBtn">Add class</button>'
+    + '</div></div></div>';
+
+  document.getElementById('cancelAdhocBtn').onclick = ()=> openStudentDetail(studentId);
+  document.getElementById('overlay').addEventListener('click',(e)=>{ if(e.target.id==='overlay') openStudentDetail(studentId); });
+
+  document.getElementById('saveAdhocBtn').onclick = async ()=>{
+    const enrId = document.getElementById('adhoc-enr').value;
+    const date = document.getElementById('adhoc-date').value;
+    const startTime = document.getElementById('adhoc-start').value;
+    const endTime = document.getElementById('adhoc-end').value;
+    if(!date){ alert('Please select a date.'); return; }
+    if(!startTime || !endTime){ alert('Please set start and end times.'); return; }
+
+    const enr = student.enrollments.find(e=>e.id===enrId);
+    const stats = enrollmentStats(enr);
+    if(stats.remaining<=0){
+      alert('No lessons remaining in this package. Please renew before adding more classes.');
+      return;
+    }
+
+    const newSess = { id: genId(), date, startTime, endTime, status:'scheduled', adhoc: true };
+    enr.sessions.push(newSess);
+    enr.sessions.sort((a,b)=>a.date.localeCompare(b.date));
+
+    // Remove the last future regular scheduled session to keep total within paid package
+    const futureRegular = enr.sessions
+      .filter(s=>!s.adhoc && s.status==='scheduled' && s.date > date)
+      .sort((a,b)=>b.date.localeCompare(a.date));
+    let removedDate = null;
+    if(futureRegular.length > 0){
+      removedDate = futureRegular[0].date;
+      enr.sessions = enr.sessions.filter(s=>s.id !== futureRegular[0].id);
+    }
+
+    const displayDate = fmtDisplayDate(date);
+    const removedNote = removedDate ? ' Regular session on '+fmtDisplayDate(removedDate)+' removed to compensate.' : '';
+    addNote(student, 'Ad hoc class scheduled on '+displayDate+' ('+fmtTime12(startTime)+'–'+fmtTime12(endTime)+') — 1 lesson deducted from '+DAY_NAMES[enr.day]+' '+fmtTime12(enr.startTime)+' package.'+removedNote, true);
+
+    await saveData();
+    renderCalendar();
+    openStudentDetail(studentId);
+  };
+}
 
 /* ============== SUMMARY / SETTINGS ============== */
 function renderSettings(){
